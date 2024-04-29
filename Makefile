@@ -1,16 +1,25 @@
 BUILD=build
 PROJECT=MyProject
 
-.PHONY: build init clean test run
+.PHONY: init clean test run
+
+all: cl cpu cuda
 
 init:
-	cmake -S . -B $(BUILD)
+	@cmake -S . -B $(BUILD)
 
-build:
-	cmake --build $(BUILD) -j 10
+cuda: init
+	@cmake --build $(BUILD) --target $(PROJECT)CUDA -j 10
 
-run:
-	@./$(BUILD)/src/$(PROJECT)Run
+cl: init
+	@cp src/cl/kernel.cl $(BUILD)/src/cl/kernel.cl
+	@cmake --build $(BUILD) --target $(PROJECT)CL -j 10
+
+cpu: init
+	@cmake --build $(BUILD) --target $(PROJECT)CPU -j 10
+
+run-%:
+	@./$(BUILD)/src/$(PROJECT)$*
 
 test:
 	ctest --test-dir $(BUILD) --output-on-failure
@@ -19,4 +28,4 @@ clean:
 	rm -rf .cache Testing build
 
 watch:
-	find src/ test/ | entr -s "make build"
+	find src/ test/ | entr -s "make"
