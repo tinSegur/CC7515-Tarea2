@@ -18,9 +18,6 @@ cl: init
 cpu: init
 	@cmake --build $(BUILD) --target $(PROJECT)CPU -j 10
 
-run-%:
-	@./$(BUILD)/src/$(PROJECT)$*
-
 test:
 	ctest --test-dir $(BUILD) --output-on-failure
 
