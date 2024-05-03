@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "kernel.h"
+#include "utils.h"
 
 struct Times {
   long create_data;
@@ -14,32 +15,31 @@ struct Times {
 
 Times t;
 
-bool simulate(int N) {
+bool simulate(int N, int M, int T = 50) {
   using std::chrono::microseconds;
-  std::vector<int> a(N), b(N), c(N);
+  uchar a[N][M], b[N][M];
 
   auto t_start = std::chrono::high_resolution_clock::now();
   for (int i = 0; i < N; i++) {
-    a[i] = std::rand() % 2000;
-    b[i] = std::rand() % 2000;
-    c[i] = 0;
+    for (int j = 0; j < M; j++) {
+      a[i][j] = rand()%2;
+    }
   }
   auto t_end = std::chrono::high_resolution_clock::now();
   t.create_data =
       std::chrono::duration_cast<microseconds>(t_end - t_start).count();
 
   t_start = std::chrono::high_resolution_clock::now();
-  vec_sum(a.data(), b.data(), c.data(), N);
+
+  sim_lifeCPU(N, M, T, a, b);
+
   t_end = std::chrono::high_resolution_clock::now();
   t.execution =
       std::chrono::duration_cast<std::chrono::microseconds>(t_end - t_start)
           .count();
 
   // Print the result
-  std::cout << "RESULTS: " << std::endl;
-  for (int i = 0; i < N; i++)
-    std::cout << "  out[" << i << "]: " << c[i] << " (" << a[i] << " + " << b[i]
-              << ")\n";
+
 
   std::cout << "Time to create data: " << t.create_data << " microseconds\n";
   std::cout << "Time to execute kernel: " << t.execution << " microseconds\n";
@@ -50,14 +50,15 @@ bool simulate(int N) {
 }
 
 int main(int argc, char* argv[]) {
-  if (argc != 3) {
-    std::cerr << "Uso: " << argv[0] << " <array size> <output_file>"
+  if (argc != 4) {
+    std::cerr << "Uso: " << argv[0] << " <array x> <array y> <output_file>"
               << std::endl;
     return 2;
   }
 
   int n = std::stoi(argv[1]);
-  if (!simulate(n)) {
+  int m = std::stoi(argv[2]);
+  if (!simulate(n, m)) {
     std::cerr << "Error while executing the simulation" << std::endl;
     return 3;
   }

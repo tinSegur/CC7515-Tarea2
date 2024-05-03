@@ -12,5 +12,6 @@ endif()
 
 
 set(CPU_SOURCES main.cpp kernel.cpp)
-add_executable(${PROJECT_NAME}CPU ${CPU_SOURCES})
+set(UTILS utils.cpp)
+add_executable(${PROJECT_NAME}CPU ${CPU_SOURCES} ${UTILS})
 

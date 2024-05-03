@@ -52,22 +52,20 @@ bool init() {
   return true;
 }
 
-bool simulate(int N, int localSize, int globalSize) {
+bool simulate(int N, int M, int localSize, int globalSize, int T = 50) {
   using std::chrono::microseconds;
-  std::size_t size = sizeof(int) * N;
-  std::vector<int> a(N), b(N), c(N);
+  std::size_t size = sizeof(int) * N * M;
+  int a[N][M];
 
   // Create the memory buffers
   cl::Buffer aBuff(queue.getInfo<CL_QUEUE_CONTEXT>(), CL_MEM_READ_WRITE, size);
-  cl::Buffer bBuff(queue.getInfo<CL_QUEUE_CONTEXT>(), CL_MEM_READ_WRITE, size);
-  cl::Buffer cBuff(queue.getInfo<CL_QUEUE_CONTEXT>(), CL_MEM_READ_WRITE, size);
 
   // Assign values to host variables
   auto t_start = std::chrono::high_resolution_clock::now();
   for (int i = 0; i < N; i++) {
-    a[i] = std::rand() % 2000;
-    b[i] = std::rand() % 2000;
-    c[i] = 0;
+    for (int j = 0; j < M; j++) {
+      a[i][j] = std::rand() % 2;
+    }
   }
   auto t_end = std::chrono::high_resolution_clock::now();
   t.create_data =
@@ -76,20 +74,19 @@ bool simulate(int N, int localSize, int globalSize) {
   // Copy values from host variables to device
   t_start = std::chrono::high_resolution_clock::now();
   // usar CL_FALSE para hacerlo asíncrono
-  queue.enqueueWriteBuffer(aBuff, CL_TRUE, 0, size, a.data());
-  queue.enqueueWriteBuffer(bBuff, CL_TRUE, 0, size, b.data());
+  queue.enqueueWriteBuffer(aBuff, CL_TRUE, 0, size, a);
   t_end = std::chrono::high_resolution_clock::now();
   t.copy_to_device =
       std::chrono::duration_cast<microseconds>(t_end - t_start).count();
 
   // Make kernel
-  cl::Kernel kernel(prog, "vec_sum");
+  cl::Kernel kernel(prog, "sim_life");
 
   // Set the kernel arguments
   kernel.setArg(0, aBuff);
-  kernel.setArg(1, bBuff);
-  kernel.setArg(2, cBuff);
-  kernel.setArg(3, N);
+  kernel.setArg(1, N);
+  kernel.setArg(2, M);
+  kernel.setArg(3, T);
 
   // Execute the function on the device (using 32 threads here)
   cl::NDRange gSize(globalSize);
@@ -105,17 +102,13 @@ bool simulate(int N, int localSize, int globalSize) {
 
   // Copy the output variable from device to host
   t_start = std::chrono::high_resolution_clock::now();
-  queue.enqueueReadBuffer(cBuff, CL_TRUE, 0, size, c.data());
+  queue.enqueueReadBuffer(aBuff, CL_TRUE, 0, size, a);
   t_end = std::chrono::high_resolution_clock::now();
   t.copy_to_host =
       std::chrono::duration_cast<std::chrono::microseconds>(t_end - t_start)
           .count();
 
   // Print the result
-  std::cout << "RESULTS: " << std::endl;
-  for (int i = 0; i < N; i++)
-    std::cout << "  out[" << i << "]: " << c[i] << " (" << a[i] << " + " << b[i]
-              << ")\n";
 
   std::cout << "Time to create data: " << t.create_data << " microseconds\n";
   std::cout << "Time to copy data to device: " << t.copy_to_device
@@ -131,25 +124,26 @@ bool simulate(int N, int localSize, int globalSize) {
 int main(int argc, char* argv[]) {
   if (!init()) return 1;
 
-  if (argc != 5) {
+  if (argc != 7) {
     std::cerr << "Uso: " << argv[0]
               << " <array size> <local size> <global size> <output file>"
               << std::endl;
     return 2;
   }
   int n = std::stoi(argv[1]);
-  int ls = std::stoi(argv[2]);
+  int m = std::stoi(argv[2]);
   int gs = std::stoi(argv[3]);
+  int ls = std::stoi(argv[4]);
 
-  if (!simulate(n, ls, gs)) {
+  if (!simulate(n, m, gs, ls)) {
     std::cerr << "CL: Error while executing the simulation" << std::endl;
     return 3;
   }
 
   std::ofstream out;
-  out.open(argv[4], std::ios::app | std::ios::out);
+  out.open(argv[5], std::ios::app | std::ios::out);
   if (!out.is_open()) {
-    std::cerr << "Error while opening file: '" << argv[2] << "'" << std::endl;
+    std::cerr << "Error while opening file: '" << argv[5] << "'" << std::endl;
     return 4;
   }
   // params

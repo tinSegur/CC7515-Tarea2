@@ -5,7 +5,9 @@
 #include <vector>
 #include <iostream>
 #include <fstream>
+
 #include "kernel.cuh"
+#include "../utils.h"
 
 struct Times {
   long create_data;
@@ -19,32 +21,25 @@ struct Times {
 
 Times t;
 
-bool simulate(int N, int blockSize, int gridSize) {
+bool simulate(int N, int M, int blockSize, int gridSize, int T = 50) {
   using std::chrono::microseconds;
-  std::size_t size = sizeof(int) * N;
-  std::vector<int> a(N), b(N), c(N);
+  std::size_t size = sizeof(uchar) * N * M;
+  uchar a[N][M];
 
   // Create the memory buffers
-  int *aDev, *bDev, *cDev;
+  int **aDev;
   cudaMalloc(&aDev, size);
-  cudaMalloc(&bDev, size);
-  cudaMalloc(&cDev, size);
 
   // Assign values to host variables
   auto t_start = std::chrono::high_resolution_clock::now();
-  for (int i = 0; i < N; i++) {
-    a[i] = std::rand() % 2000;
-    b[i] = std::rand() % 2000;
-    c[i] = 0;
-  }
+  initGrid(N, M, a);
   auto t_end = std::chrono::high_resolution_clock::now();
   t.create_data =
       std::chrono::duration_cast<microseconds>(t_end - t_start).count();
 
   // Copy values from host variables to device
   t_start = std::chrono::high_resolution_clock::now();
-  cudaMemcpy(aDev, a.data(), size, cudaMemcpyHostToDevice);
-  cudaMemcpy(bDev, b.data(), size, cudaMemcpyHostToDevice);
+  cudaMemcpy(aDev, a, size, cudaMemcpyHostToDevice);
   t_end = std::chrono::high_resolution_clock::now();
   t.copy_to_device =
       std::chrono::duration_cast<microseconds>(t_end - t_start).count();
@@ -52,7 +47,7 @@ bool simulate(int N, int blockSize, int gridSize) {
 
   // Execute the function on the device (using 32 threads here)
   t_start = std::chrono::high_resolution_clock::now();
-  vec_sum<<<blockSize, gridSize>>>(aDev, bDev, cDev, N);
+  sim_life<<<blockSize, gridSize>>>(N, M, aDev, T);
   cudaDeviceSynchronize();
   t_end = std::chrono::high_resolution_clock::now();
   t.execution =
@@ -61,17 +56,11 @@ bool simulate(int N, int blockSize, int gridSize) {
 
   // Copy the output variable from device to host
   t_start = std::chrono::high_resolution_clock::now();
-  cudaMemcpy(c.data(), cDev, size, cudaMemcpyDeviceToHost);
+  cudaMemcpy(a, aDev, size, cudaMemcpyDeviceToHost);
   t_end = std::chrono::high_resolution_clock::now();
   t.copy_to_host =
       std::chrono::duration_cast<std::chrono::microseconds>(t_end - t_start)
           .count();
-
-  // Print the result
-  std::cout << "RESULTS: " << std::endl;
-  for (int i = 0; i < N; i++)
-    std::cout << "  out[" << i << "]: " << c[i] << " (" << a[i] << " + " << b[i]
-              << ")\n";
 
   std::cout << "Time to create data: " << t.create_data << " microseconds\n";
   std::cout << "Time to copy data to device: " << t.copy_to_device
@@ -92,10 +81,11 @@ int main(int argc, char* argv[]) {
     return 2;
   }
   int n = std::stoi(argv[1]);
-  int bs = std::stoi(argv[2]);
+  int m = std::stoi(argv[2]);
   int gs = std::stoi(argv[3]);
+  int bs = std::stoi(argv[4]);
 
-  if (!simulate(n, bs, gs)) {
+  if (!simulate(n, m, bs, gs)) {
     std::cerr << "CUDA: Error while executing the simulation" << std::endl;
     return 3;
   }
