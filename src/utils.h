@@ -8,6 +8,6 @@
 
 typedef unsigned char uchar;
 
-void initGrid(int n, int m, uchar a[n][m]);
+void initGrid(int n, int m, char *a);
 
 #endif //UTILS_H

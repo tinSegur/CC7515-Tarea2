@@ -5,9 +5,9 @@
 #include <vector>
 #include <iostream>
 #include <fstream>
+#include <unistd.h>
 
 #include "kernel.cuh"
-#include "../utils.h"
 
 struct Times {
   long create_data;
@@ -21,14 +21,24 @@ struct Times {
 
 Times t;
 
-bool simulate(int N, int M, int blockSize, int gridSize, int T = 50) {
+void initGrid(int n, int m, char *a){
+  for (int i = 0; i < n; i++) {
+    for (int j = 0; j < m; j++) {
+      a[i*m + j] = rand() % 2;
+    }
+  }
+}
+
+bool simulate(int N, int M, int blockSize, int gridSize, int T = 50, std::string outfile = "cudaGameOfLife.txt") {
   using std::chrono::microseconds;
   std::size_t size = sizeof(uchar) * N * M;
-  uchar a[N][M];
+  char a[N*M];
 
   // Create the memory buffers
-  int **aDev;
+  char *aDev;
+  char *bDev;
   cudaMalloc(&aDev, size);
+  cudaMalloc(&bDev, size);
 
   // Assign values to host variables
   auto t_start = std::chrono::high_resolution_clock::now();
@@ -44,15 +54,40 @@ bool simulate(int N, int M, int blockSize, int gridSize, int T = 50) {
   t.copy_to_device =
       std::chrono::duration_cast<microseconds>(t_end - t_start).count();
 
+  std::ofstream out;
+  out.open(outfile, std::ios::app);
+
+
+  t.execution = 0;
+  t.copy_to_host = 0;
+
+  dim3 threadsPerBlock(blockSize, blockSize);
+  dim3 gridDims(ceil(N/blockSize), ceil(M/blockSize));
 
   // Execute the function on the device (using 32 threads here)
-  t_start = std::chrono::high_resolution_clock::now();
-  sim_life<<<blockSize, gridSize>>>(N, M, aDev, T);
-  cudaDeviceSynchronize();
-  t_end = std::chrono::high_resolution_clock::now();
-  t.execution =
+  for (int i= T; i>0; i--) {
+    t_start = std::chrono::high_resolution_clock::now();
+    sim_life<<<threadsPerBlock, gridDims>>>(N, M, aDev, bDev);
+    cudaDeviceSynchronize();
+    t_end = std::chrono::high_resolution_clock::now();
+    t.execution +=
       std::chrono::duration_cast<std::chrono::microseconds>(t_end - t_start)
           .count();
+
+    cudaMemcpy(aDev, bDev, size, cudaMemcpyDeviceToDevice);
+
+    // Copy the output variable from device to host
+    t_start = std::chrono::high_resolution_clock::now();
+    cudaMemcpy(a, aDev, size, cudaMemcpyDeviceToHost);
+    t_end = std::chrono::high_resolution_clock::now();
+    t.copy_to_host +=
+        std::chrono::duration_cast<std::chrono::microseconds>(t_end - t_start)
+            .count();
+
+    out.write(a, size);
+
+  }
+
 
   // Copy the output variable from device to host
   t_start = std::chrono::high_resolution_clock::now();

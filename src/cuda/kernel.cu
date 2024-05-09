@@ -1,26 +1,23 @@
 #include "kernel.cuh"
 
-__global__ void life_sim(int n, int m, int a[n][m], int t = 50){
+__global__ void sim_life(int n, int m, char *a, char *b){
     uint i = (blockIdx.x * blockDim.x) + threadIdx.x;
     uint j = (blockIdx.y * blockDim.y) + threadIdx.y;
 
     if (i < n && j < m) {
-        while (t-- > 0) {
-            int i0 = (i - 1)%n;
-            int i2 = (i + 1)%n;
+        int i0 = (i - 1)%n;
+        int i2 = (i + 1)%n;
 
-            int j0 = (j - 1)%m;
-            int j2 = (j + 1)%m;
+        int j0 = (j - 1)%m;
+        int j2 = (j + 1)%m;
 
-            char liveNeighbors = a[i0][j0] + a[i0][j] + a[i0][j2] +
-                    a[i][j0]  + a[i][j2] +
-                    a[i2][j0] + a[i2][j] + a[i2][j2];
+        char liveNeighbors = a[i0*m + j0] + a[i0*m + j] + a[i0*m + j2] +
+                a[i*m + j0]  + a[i*m + j2] +
+                a[i2*m + j0] + a[i2*m + j] + a[i2*m + j2];
 
-            __syncthreads();
+        __syncthreads();
 
-            a[i][j] = (liveNeighbors == 3) || (liveNeighbors == 2 && a[i][j]) ? 1 : 0;
-
-        }
+        b[i*m + j] = (liveNeighbors == 3) || (liveNeighbors == 2 && a[i*m + j]) ? 1 : 0;
     }
 
 }
