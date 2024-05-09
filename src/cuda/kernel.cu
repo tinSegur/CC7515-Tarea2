@@ -11,7 +11,8 @@ __global__ void sim_life(int n, int m, char *a, char *b){
         int j0 = (j - 1)%m;
         int j2 = (j + 1)%m;
 
-        char liveNeighbors = a[i0*m + j0] + a[i0*m + j] + a[i0*m + j2] +
+        char liveNeighbors =
+                a[i0*m + j0] + a[i0*m + j] + a[i0*m + j2] +
                 a[i*m + j0]  + a[i*m + j2] +
                 a[i2*m + j0] + a[i2*m + j] + a[i2*m + j2];
 

@@ -30,6 +30,8 @@ void initGrid(int n, int m, char *a){
 }
 
 bool simulate(int N, int M, int blockSize, int gridSize, int T = 50, std::string outfile = "cudaGameOfLife.txt") {
+  srand(1234);
+
   using std::chrono::microseconds;
   std::size_t size = sizeof(uchar) * N * M;
   char a[N*M];
@@ -56,6 +58,8 @@ bool simulate(int N, int M, int blockSize, int gridSize, int T = 50, std::string
 
   std::ofstream out;
   out.open(outfile, std::ios::app);
+
+  out << N << " " << M << " " << T;
 
 
   t.execution = 0;
@@ -110,17 +114,19 @@ bool simulate(int N, int M, int blockSize, int gridSize, int T = 50, std::string
 }
 
 int main(int argc, char* argv[]) {
-  if (argc != 5) {
-    std::cerr << "Uso: " << argv[0] << " <array size> <block size> <grid size> <output file>"
+  if (argc != 7) {
+    std::cerr << "Uso: " << argv[0] << " <n> <m> <sim steps> <block size> <grid size> <output file>"
               << std::endl;
     return 2;
   }
   int n = std::stoi(argv[1]);
   int m = std::stoi(argv[2]);
-  int gs = std::stoi(argv[3]);
-  int bs = std::stoi(argv[4]);
+  int steps = std::stoi(argv[3]);
+  int gs = std::stoi(argv[4]);
+  int bs = std::stoi(argv[5]);
+  std::string outf = argv[6];
 
-  if (!simulate(n, m, bs, gs)) {
+  if (!simulate(n, m, bs, gs, steps, outf)) {
     std::cerr << "CUDA: Error while executing the simulation" << std::endl;
     return 3;
   }
@@ -136,6 +142,6 @@ int main(int argc, char* argv[]) {
   // times
   out << t.create_data << "," << t.copy_to_device << "," << t.execution << "," << t.copy_to_host << "," << t.total() << "\n";
 
-  std::cout << "Data written to " << argv[4] << std::endl;
+  std::cout << "Data written to " << argv[5] << std::endl;
   return 0;
 }

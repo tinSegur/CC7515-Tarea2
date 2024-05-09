@@ -109,7 +109,6 @@ bool simulate(int N, int M, int localSize, int globalSize, int T = 50) {
           .count();
 
   // Print the result
-
   std::cout << "Time to create data: " << t.create_data << " microseconds\n";
   std::cout << "Time to copy data to device: " << t.copy_to_device
             << " microseconds\n";
