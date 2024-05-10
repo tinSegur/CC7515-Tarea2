@@ -57,9 +57,8 @@ bool simulate(int N, int M, int blockSize, int gridSize, int T = 50, std::string
       std::chrono::duration_cast<microseconds>(t_end - t_start).count();
 
   std::ofstream out;
-  out.open(outfile, std::ios::app);
-
-  out << N << " " << M << " " << T;
+  out.open(outfile);
+  out << N << " " << M << " " << T << "\n";
 
 
   t.execution = 0;
@@ -128,6 +127,7 @@ int main(int argc, char* argv[]) {
 
   if (!simulate(n, m, bs, gs, steps, outf)) {
     std::cerr << "CUDA: Error while executing the simulation" << std::endl;
+    return 3;
     return 3;
   }
 
