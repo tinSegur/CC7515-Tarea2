@@ -8,6 +8,8 @@
 
 #include "kernel.cuh"
 #include "kernel_shared.cuh"
+#include "kernel.h"
+
 
 struct Times {
   long create_data;
@@ -15,13 +17,14 @@ struct Times {
   long execution;
   long copy_to_device;
   inline long total() {
-    return create_data + copy_to_host + execution + copy_to_device; 
+    return create_data + copy_to_host + execution + copy_to_device;
   }
 };
 
 Times t;
 
 void initGrid(int n, int m, char *a){
+  srand(1234); // for ensuring that initialization is consistent
   for (int i = 0; i < n; i++) {
     for (int j = 0; j < m; j++) {
       a[i*m + j] = rand() % 2;
@@ -30,15 +33,15 @@ void initGrid(int n, int m, char *a){
 }
 
 bool simulate(int N, int M, int blockSize, int gridSize, int T = 50, std::string outfile = "cudaGameOfLife.txt", bool shared = false) {
-  srand(1234);
-
-  std::cout << "Starting simulation:\n";
+  std::cout << "Starting simulation test:\n";
   std::cout << "\tn: " << N << " m: " << M << " steps: " << T << " blockSize: " << blockSize << " shared?: " << (shared ? "yes" : "no") << "\n";
 
 
   using std::chrono::microseconds;
   std::size_t size = sizeof(uchar) * N * M;
   char a[N*M];
+  char b[N*M];
+  char c[N*M]; // for storing GPU result and comparison
 
   // Create the memory buffers
   char *aDev;
@@ -83,6 +86,8 @@ bool simulate(int N, int M, int blockSize, int gridSize, int T = 50, std::string
       sim_life<<<threadsPerBlock, gridDims>>>(N, M, aDev, bDev);
     }
 
+    // Calculate CPU result
+    sim_lifeCPU(N, M, a, b);
 
     cudaDeviceSynchronize();
     t_end = std::chrono::high_resolution_clock::now();
@@ -94,16 +99,19 @@ bool simulate(int N, int M, int blockSize, int gridSize, int T = 50, std::string
 
     // Copy the output variable from device to host
     t_start = std::chrono::high_resolution_clock::now();
-    cudaMemcpy(a, aDev, size, cudaMemcpyDeviceToHost);
+    cudaMemcpy(c, aDev, size, cudaMemcpyDeviceToHost);
     t_end = std::chrono::high_resolution_clock::now();
     t.copy_to_host +=
         std::chrono::duration_cast<std::chrono::microseconds>(t_end - t_start)
             .count();
 
-    out.write(a, size);
+    //Compare CPU and GPU result
 
+    for (int i = 0; i < N*M; i++) {
+      if (a[i] != c[i])
+        return false;
+    }
   }
-
 
   std::cout << "Time to create data: " << t.create_data << " microseconds\n";
   std::cout << "Time to copy data to device: " << t.copy_to_device
@@ -133,7 +141,6 @@ int main(int argc, char* argv[]) {
 
   if (!simulate(n, m, bs, gs, steps, outf, shared)) {
     std::cerr << "CUDA: Error while executing the simulation" << std::endl;
-    return 3;
     return 3;
   }
 

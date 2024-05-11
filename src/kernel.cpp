@@ -1,10 +1,10 @@
 #include "kernel.h"
 
+#include <cstring>
 #include <future>
 
-void sim_lifeCPU(size_t n, size_t m, int t, char *grid, char *buf) {
+void sim_lifeCPU(size_t n, size_t m, char *grid, char *buf) {
     char liveNeighbors;
-    int time = t;
 
     size_t i0;
     size_t i2;
@@ -25,8 +25,10 @@ void sim_lifeCPU(size_t n, size_t m, int t, char *grid, char *buf) {
                     grid[i*m + j0] + grid[i*m + j2] +
                     grid[i2*m + j0] + grid[i2*m + j] + grid[i2*m + j2];
 
-            buf[i*m + j] = (liveNeighbors == 3) || (liveNeighbors == 2 && grid[i*m + j]) ? 1 : 0;
+            buf[i*m + j] = liveNeighbors == 3 || (liveNeighbors == 2 && grid[i*m + j]);
         }
     }
-    std::swap(grid, buf);
+
+    memcpy(grid, buf, n*m*sizeof(char));
+
 }
