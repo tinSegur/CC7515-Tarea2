@@ -152,6 +152,7 @@ bool simulate(const int N,const int M, int globalSize, int localSize, std::ofstr
           .count();
 
   // Print the result
+<<<<<<< HEAD
 
   for (int i = 0; i < N; i++){
     for (int j = 0; j < M; j++){
@@ -168,6 +169,8 @@ bool simulate(const int N,const int M, int globalSize, int localSize, std::ofstr
   out << "\n";
   
 
+=======
+>>>>>>> refs/remotes/origin/master
   std::cout << "Time to create data: " << t.create_data << " microseconds\n";
   std::cout << "Time to copy data to device: " << t.copy_to_device
             << " microseconds\n";

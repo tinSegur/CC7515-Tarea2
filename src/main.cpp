@@ -15,28 +15,43 @@ struct Times {
 
 Times t;
 
-bool simulate(int N, int M, int T = 50) {
+bool simulate(int N, int M, int T = 50, std::string outfile = "gameOfLifeCPU.txt") {
   using std::chrono::microseconds;
-  uchar a[N][M], b[N][M];
+  char a[N*M], b[N*M];
+
+  srand(1234);
 
   auto t_start = std::chrono::high_resolution_clock::now();
   for (int i = 0; i < N; i++) {
     for (int j = 0; j < M; j++) {
-      a[i][j] = rand()%2;
+      a[i*M + j] = rand()%2;
     }
   }
   auto t_end = std::chrono::high_resolution_clock::now();
   t.create_data =
       std::chrono::duration_cast<microseconds>(t_end - t_start).count();
 
-  t_start = std::chrono::high_resolution_clock::now();
+  // File for storing of results
+  //Formatted so first line contains simulation parameters (N, M, T), and the rest are the simulation results
+  std::ofstream out;
+  out.open(outfile);
+  out << N << " " << M << " " << T << "\n";
 
-  sim_lifeCPU(N, M, T, a, b);
 
-  t_end = std::chrono::high_resolution_clock::now();
-  t.execution =
-      std::chrono::duration_cast<std::chrono::microseconds>(t_end - t_start)
-          .count();
+  int steps = T;
+  t.execution = 0;
+
+  while (steps-- > 0) {
+    t_start = std::chrono::high_resolution_clock::now();
+    sim_lifeCPU(N, M, T, a, b);
+    t_end = std::chrono::high_resolution_clock::now();
+    t.execution +=
+        std::chrono::duration_cast<std::chrono::microseconds>(t_end - t_start)
+            .count();
+
+    out.write(a, sizeof(char)*N*M);
+
+  }
 
   // Print the result
 
@@ -50,7 +65,7 @@ bool simulate(int N, int M, int T = 50) {
 }
 
 int main(int argc, char* argv[]) {
-  if (argc != 4) {
+  if (argc != 5) {
     std::cerr << "Uso: " << argv[0] << " <array x> <array y> <output_file>"
               << std::endl;
     return 2;
@@ -58,7 +73,9 @@ int main(int argc, char* argv[]) {
 
   int n = std::stoi(argv[1]);
   int m = std::stoi(argv[2]);
-  if (!simulate(n, m)) {
+  int steps = std::stoi(argv[3]);
+  std::string outf = argv[4];
+  if (!simulate(n, m, steps, outf)) {
     std::cerr << "Error while executing the simulation" << std::endl;
     return 3;
   }
@@ -72,6 +89,6 @@ int main(int argc, char* argv[]) {
   out << n << "," << t.create_data << "," << t.execution << "," << t.total()
       << "\n";
 
-  std::cout << "Data written to " << argv[2] << std::endl;
+  std::cout << "Data written to " << argv[4] << std::endl;
   return 0;
 }
