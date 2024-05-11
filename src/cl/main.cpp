@@ -1,15 +1,18 @@
-
 #include <cstddef>
-#ifdef __APPLE__
-#include <OpenCL/opencl.hpp>
-#else
-#include <CL/opencl.hpp>
-#endif  // DEBUG
+#include <cstdlib>
 #include <chrono>
 #include <fstream>
 #include <iostream>
 #include <sstream>
+#include <random>
 
+
+
+#define CL_HPP_ENABLE_EXCEPTIONS
+#include <OpenCL/opencl.hpp>
+
+
+//Estructura para contar los tiempos de procesamiento
 struct Times {
   long create_data;
   long copy_to_host;
@@ -24,9 +27,11 @@ Times t;
 cl::Program prog;
 cl::CommandQueue queue;
 
+//Settea el program y hace build del kernel
 bool init() {
   std::vector<cl::Platform> platforms;
   std::vector<cl::Device> devices;
+  //se obtiene la plataforma y device
   cl::Platform::get(&platforms);
   for (auto& p : platforms) {
     p.getDevices(CL_DEVICE_TYPE_GPU, &devices);
@@ -42,7 +47,6 @@ bool init() {
 
   cl::Context context(devices.front());
   queue = cl::CommandQueue(context, devices.front());
-
   std::ifstream sourceFile("kernel.cl");
   std::stringstream sourceCode;
   sourceCode << sourceFile.rdbuf();
@@ -52,30 +56,67 @@ bool init() {
   return true;
 }
 
-bool simulate(int N, int M, int localSize, int globalSize, int T = 50) {
+void arrayInit(const int N,const int M,unsigned char (&a)[],std::ofstream& out){
   using std::chrono::microseconds;
-  std::size_t size = sizeof(int) * N * M;
-  int a[N][M];
-
-  // Create the memory buffers
-  cl::Buffer aBuff(queue.getInfo<CL_QUEUE_CONTEXT>(), CL_MEM_READ_WRITE, size);
+  
+  //Set seed and make sure random works into the unsigned char limits
+  //int myseed = 1234;
+  //std::default_random_engine rng(myseed);
+  //std::uniform_int_distribution<int> rng_dist(0, 255);
 
   // Assign values to host variables
   auto t_start = std::chrono::high_resolution_clock::now();
   for (int i = 0; i < N; i++) {
     for (int j = 0; j < M; j++) {
-      a[i][j] = std::rand() % 2;
+      a[i*M + j] = rand() % 2;
     }
   }
   auto t_end = std::chrono::high_resolution_clock::now();
   t.create_data =
       std::chrono::duration_cast<microseconds>(t_end - t_start).count();
+  out << "\n";
+  for (int i = 0; i < N; i++){
+    for (int j = 0; j < M; j++){
+      int printerAux = a[i*M + j];
+      out << printerAux;
+      if (j != M-1){
+        out << ",";
+      }
+      else{
+        out << "\n";
+      }
+    }
+  }
+  out << "\n";
+
+}
+
+//Simula 1 epoca del juego en GPU
+//N,M Tamaño de la grilla
+//globalsize tamaño del problema
+//localsize tamaño de los work-groups
+//out archivo abierto para enviar los resultados
+bool simulate(const int N,const int M, int globalSize, int localSize, std::ofstream& out,unsigned char (&a)[]) {
+  using std::chrono::microseconds;
+  const std::size_t size = sizeof(unsigned char) * N * M;
+  
+
+  // Create the memory buffers
+  cl::Buffer inBuff(queue.getInfo<CL_QUEUE_CONTEXT>(), CL_MEM_READ_WRITE, size);
+  cl::Buffer outBuff(queue.getInfo<CL_QUEUE_CONTEXT>(), CL_MEM_READ_WRITE, size);
+  //Set seed and make sure random works into the unsigned char limits
+  //int myseed = 1234;
+  //std::default_random_engine rng(myseed);
+  //std::uniform_int_distribution<int> rng_dist(0, 255);
+
+ 
 
   // Copy values from host variables to device
-  t_start = std::chrono::high_resolution_clock::now();
+  auto t_start = std::chrono::high_resolution_clock::now();
   // usar CL_FALSE para hacerlo asíncrono
-  queue.enqueueWriteBuffer(aBuff, CL_TRUE, 0, size, a);
-  t_end = std::chrono::high_resolution_clock::now();
+  queue.enqueueWriteBuffer(inBuff, CL_TRUE, 0, size, a);
+
+  auto t_end = std::chrono::high_resolution_clock::now();
   t.copy_to_device =
       std::chrono::duration_cast<microseconds>(t_end - t_start).count();
 
@@ -83,18 +124,20 @@ bool simulate(int N, int M, int localSize, int globalSize, int T = 50) {
   cl::Kernel kernel(prog, "sim_life");
 
   // Set the kernel arguments
-  kernel.setArg(0, aBuff);
-  kernel.setArg(1, N);
-  kernel.setArg(2, M);
-  kernel.setArg(3, T);
+  kernel.setArg(0, inBuff);
+  kernel.setArg(1, outBuff);
+  kernel.setArg(2, N);
+  kernel.setArg(3, M);
 
-  // Execute the function on the device (using 32 threads here)
-  cl::NDRange gSize(globalSize);
-  cl::NDRange lSize(localSize);
+  // Execute the function on the device 
+  cl::NDRange globalSize2D(N,M);
+  cl::NDRange localsize2D(localSize,localSize);
 
   t_start = std::chrono::high_resolution_clock::now();
-  queue.enqueueNDRangeKernel(kernel, cl::NullRange, globalSize, localSize);
-  queue.finish();
+  cl::Event event;
+  queue.enqueueNDRangeKernel(kernel, cl::NullRange, globalSize2D, localsize2D,nullptr,&event);
+  //queue.finish();
+  event.wait();
   t_end = std::chrono::high_resolution_clock::now();
   t.execution =
       std::chrono::duration_cast<std::chrono::microseconds>(t_end - t_start)
@@ -102,13 +145,28 @@ bool simulate(int N, int M, int localSize, int globalSize, int T = 50) {
 
   // Copy the output variable from device to host
   t_start = std::chrono::high_resolution_clock::now();
-  queue.enqueueReadBuffer(aBuff, CL_TRUE, 0, size, a);
+  queue.enqueueReadBuffer(outBuff, CL_TRUE, 0, size, a);
   t_end = std::chrono::high_resolution_clock::now();
   t.copy_to_host =
       std::chrono::duration_cast<std::chrono::microseconds>(t_end - t_start)
           .count();
 
   // Print the result
+
+  for (int i = 0; i < N; i++){
+    for (int j = 0; j < M; j++){
+      int printerAux = a[i*M + j];
+      out  << printerAux;
+      if (j != M-1){
+        out << ",";
+      }
+      else{
+        out << "\n";
+      }
+    }
+  }
+  out << "\n";
+  
 
   std::cout << "Time to create data: " << t.create_data << " microseconds\n";
   std::cout << "Time to copy data to device: " << t.copy_to_device
@@ -118,15 +176,21 @@ bool simulate(int N, int M, int localSize, int globalSize, int T = 50) {
             << " microseconds\n";
   std::cout << "Time to execute the whole program: " << t.total()
             << " microseconds\n";
+
+  
   return true;
 }
 
 int main(int argc, char* argv[]) {
-  if (!init()) return 1;
+  if (!init()){
+    std::cerr << "Error inicializando OpenCL";
+    return 1;
+  }
+  
 
   if (argc != 7) {
     std::cerr << "Uso: " << argv[0]
-              << " <array size> <local size> <global size> <output file>"
+              << " <array size N> <array size M> <global size> <local size> <t-iterations> <output filename>"
               << std::endl;
     return 2;
   }
@@ -134,24 +198,42 @@ int main(int argc, char* argv[]) {
   int m = std::stoi(argv[2]);
   int gs = std::stoi(argv[3]);
   int ls = std::stoi(argv[4]);
+  int T = std::stoi(argv[5]);
 
-  if (!simulate(n, m, gs, ls)) {
-    std::cerr << "CL: Error while executing the simulation" << std::endl;
-    return 3;
-  }
-
+  //Abre el archivo
   std::ofstream out;
-  out.open(argv[5], std::ios::app | std::ios::out);
+  out.open(argv[6], std::ios::app | std::ios::out);
   if (!out.is_open()) {
-    std::cerr << "Error while opening file: '" << argv[5] << "'" << std::endl;
+    std::cerr << "Error while opening file: '" << argv[6] << "'" << std::endl;
     return 4;
   }
+
   // params
   out << n << "," << ls << "," << gs << ",";
+
+
+  //Simulation 
+
+  unsigned char a[n*m];
+
+  arrayInit(n,m,a,out);
+
+  for (int i = 0; i < T;i++){
+    //Simula 1 epoca
+    if (!simulate(n, m, gs, ls, out, a)) {
+    std::cerr << "CL: Error while executing the simulation" << std::endl;
+    return 3;
+    }
+
+
+  }
+  
+
+  
   // times
   out << t.create_data << "," << t.copy_to_device << "," << t.execution << ","
       << t.copy_to_host << "," << t.total() << "\n";
 
-  std::cout << "Data written to " << argv[4] << std::endl;
+  std::cout << "Data written to " << argv[6] << std::endl;
   return 0;
 }
