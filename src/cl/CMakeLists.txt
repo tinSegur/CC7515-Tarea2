@@ -2,7 +2,9 @@ set(CL_SOURCES main.cpp)
 set(CL_KERNEL ${CMAKE_CURRENT_SOURCE_DIR}/kernel.cl)
 set(CL_VERSION ${OpenCL_VERSION_MAJOR}${OpenCL_VERSION_MINOR}0)
 
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/kernel.cl
+        ${CMAKE_CURRENT_BINARY_DIR} COPYONLY)
 add_executable(${PROJECT_NAME}CL ${CL_SOURCES} ${UTILS})
 target_link_libraries(${PROJECT_NAME}CL PRIVATE ${OpenCL_LIBRARY})
-target_include_directories(${PROJECT_NAME}CL PRIVATE ${CMAKE_SOURCE_DIR}/include)
+target_include_directories(${PROJECT_NAME}CL PRIVATE ${CMAKE_SOURCE_DIR}/include ${OpenCL_INCLUDE_DIRS}) 
 target_compile_definitions(${PROJECT_NAME}CL PRIVATE CL_HPP_TARGET_OPENCL_VERSION=${CL_VERSION} CL_HPP_MINIMUM_OPENCL_VERSION=${CL_VERSION})
