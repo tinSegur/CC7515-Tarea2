@@ -84,15 +84,14 @@ bool simulate(int N, int M, int blockSize, int gridSize, int T = 50, std::string
       sim_life<<<threadsPerBlock, gridDims>>>(N, M, aDev, bDev);
     }
 
-
     cudaDeviceSynchronize();
+
     t_end = std::chrono::high_resolution_clock::now();
     t.execution +=
       std::chrono::duration_cast<std::chrono::microseconds>(t_end - t_start)
           .count();
 
     cudaMemcpy(aDev, bDev, size, cudaMemcpyDeviceToDevice);
-
     // Copy the output variable from device to host
     t_start = std::chrono::high_resolution_clock::now();
     cudaMemcpy(a, aDev, size, cudaMemcpyDeviceToHost);
