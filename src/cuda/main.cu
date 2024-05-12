@@ -117,6 +117,9 @@ bool simulate(int N, int M, int blockSize, int gridSize, int T = 50, std::string
     }
     out << "\n";
 
+    cudaFree(aDev);
+    cudaFree(bDev);
+
   }
 
 
