@@ -5,10 +5,10 @@ __global__ void sim_life(int n, int m, char *a, char *b){
     uint j = (blockIdx.y * blockDim.y) + threadIdx.y;
 
     if (i < n && j < m) {
-        int i0 = (i - 1)%n;
+        int i0 = (i + n - 1)%n;
         int i2 = (i + 1)%n;
 
-        int j0 = (j - 1)%m;
+        int j0 = (j + m - 1)%m;
         int j2 = (j + 1)%m;
 
         char liveNeighbors =

@@ -21,10 +21,10 @@ __global__ void sim_life_shared(int n, int m, char *a, char *b){
 
     buf[(blockIdx.x+1)*blockDim.y + blockIdx.y + 1] = a[i*m + j];
 
-    int i0 = (i - 1)%n;
+    int i0 = (i + n - 1)%n;
     int i2 = (i + 1)%n;
 
-    int j0 = (j - 1)%m;
+    int j0 = (j + m - 1)%m;
     int j2 = (j + 1)%m;
 
     if (blockIdx.x == 0) { // threads in the upper horizontal block edge should write the value "above" them into shared memory
@@ -56,6 +56,14 @@ __global__ void sim_life_shared(int n, int m, char *a, char *b){
         buf[(blockIdx.x+1)*blockDim.x + blockIdx.y + 2] = a[i*m + j2];
     }
 
+    int si0 = (blockIdx.x + blockDim.x - 1)%blockDim.x;
+    int si = blockIdx.x;
+    int si2 = (blockIdx.x + 1)%blockDim.x;
+
+    int sj0 = (blockIdx.y + blockDim.y - 1)%blockDim.y;
+    int sj = blockIdx.y;
+    int sj2 = (blockIdx.y + 1)%blockDim.y;
+
 
     __syncthreads();
 
@@ -63,9 +71,9 @@ __global__ void sim_life_shared(int n, int m, char *a, char *b){
 
     if (i < n && j < m)
         liveNeighbors =
-                buf[i0*m + j0] + buf[i0*m + j] + buf[i0*m + j2] +
-                buf[i*m + j0]  + buf[i*m + j2] +
-                buf[i2*m + j0] + buf[i2*m + j] + buf[i2*m + j2];
+                buf[si0*m + sj0] + buf[si0*m + sj] + buf[si0*m + sj2] +
+                buf[si*m + sj0]  + buf[si*m + sj2] +
+                buf[si2*m + sj0] + buf[si2*m + sj] + buf[si2*m + sj2];
 
     __syncthreads();
 

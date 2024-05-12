@@ -43,17 +43,35 @@ bool simulate(int N, int M, int T = 50, std::string outfile = "gameOfLifeCPU.txt
 
   while (steps-- > 0) {
     t_start = std::chrono::high_resolution_clock::now();
-    sim_lifeCPU(N, M, T, a, b);
+    sim_lifeCPU(N, M, a, b);
     t_end = std::chrono::high_resolution_clock::now();
     t.execution +=
         std::chrono::duration_cast<std::chrono::microseconds>(t_end - t_start)
             .count();
 
-    out.write(a, sizeof(char)*N*M);
+    //out.write(a, sizeof(char)*N*M);
+
+    //Print result
+    for (int i = 0; i < N; i++){
+      for (int j = 0; j < M; j++){
+        int printerAux = a[i*M + j];
+        out  << printerAux;
+        if (j != M-1){
+          out << ",";
+        }
+        else{
+          out << "\n";
+        }
+      }
+    }
+
+    out << "\n";
 
   }
 
-  // Print the result
+
+
+  out << "\n";
 
 
   std::cout << "Time to create data: " << t.create_data << " microseconds\n";

@@ -13,11 +13,11 @@ void sim_lifeCPU(size_t n, size_t m, char *grid, char *buf) {
     size_t j2;
 
     for (size_t i = 0; i<n; i++) {
-        i0 = (i-1)%n;
+        i0 = (i + n - 1)%n;
         i2 = (i+1)%n;
 
         for(size_t j = 0; j<m; j++) {
-            j0 = (j-1)%m;
+            j0 = (j + m - 1)%m;
             j2 = (j+1)%m;
 
             liveNeighbors =
@@ -25,7 +25,7 @@ void sim_lifeCPU(size_t n, size_t m, char *grid, char *buf) {
                     grid[i*m + j0] + grid[i*m + j2] +
                     grid[i2*m + j0] + grid[i2*m + j] + grid[i2*m + j2];
 
-            buf[i*m + j] = liveNeighbors == 3 || (liveNeighbors == 2 && grid[i*m + j]);
+            buf[i*m + j] = (liveNeighbors == 3) || (liveNeighbors == 2 && (bool)grid[i*m + j]);
         }
     }
 

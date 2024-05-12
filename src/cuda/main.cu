@@ -22,6 +22,7 @@ struct Times {
 Times t;
 
 void initGrid(int n, int m, char *a){
+  srand(1234);
   for (int i = 0; i < n; i++) {
     for (int j = 0; j < m; j++) {
       a[i*m + j] = rand() % 2;
@@ -30,14 +31,14 @@ void initGrid(int n, int m, char *a){
 }
 
 bool simulate(int N, int M, int blockSize, int gridSize, int T = 50, std::string outfile = "cudaGameOfLife.txt", bool shared = false) {
-  srand(1234);
+
 
   std::cout << "Starting simulation:\n";
   std::cout << "\tn: " << N << " m: " << M << " steps: " << T << " blockSize: " << blockSize << " shared?: " << (shared ? "yes" : "no") << "\n";
 
 
   using std::chrono::microseconds;
-  std::size_t size = sizeof(uchar) * N * M;
+  std::size_t size = sizeof(char) * N * M;
   char a[N*M];
 
   // Create the memory buffers
@@ -100,7 +101,22 @@ bool simulate(int N, int M, int blockSize, int gridSize, int T = 50, std::string
         std::chrono::duration_cast<std::chrono::microseconds>(t_end - t_start)
             .count();
 
-    out.write(a, size);
+    //out.write(a, size);
+
+    //Print result
+    for (int i = 0; i < N; i++){
+      for (int j = 0; j < M; j++){
+        int printerAux = a[i*M + j];
+        out  << printerAux;
+        if (j != M-1){
+          out << ",";
+        }
+        else{
+          out << "\n";
+        }
+      }
+    }
+    out << "\n";
 
   }
 
