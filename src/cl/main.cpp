@@ -22,7 +22,7 @@ struct Times {
     return create_data + copy_to_host + execution + copy_to_device;
   }
 };
-
+bool shared_memory = true;
 Times t;
 cl::Program prog;
 cl::CommandQueue queue;
@@ -47,9 +47,16 @@ bool init() {
 
   cl::Context context(devices.front());
   queue = cl::CommandQueue(context, devices.front());
-  std::ifstream sourceFile("kernel.cl");
   std::stringstream sourceCode;
-  sourceCode << sourceFile.rdbuf();
+
+  if (shared_memory == true){
+    std::ifstream sourceFile("kernel_shared.cl");
+    sourceCode << sourceFile.rdbuf();
+  }
+  else{
+    std::ifstream sourceFile("kernel.cl");
+    sourceCode << sourceFile.rdbuf();
+  }
 
   prog = cl::Program(context, sourceCode.str(), true);
 
@@ -63,7 +70,7 @@ void arrayInit(const int N,const int M,unsigned char (&a)[],std::ofstream& out){
   //int myseed = 1234;
   //std::default_random_engine rng(myseed);
   //std::uniform_int_distribution<int> rng_dist(0, 255);
-
+  //srand(1234);
   // Assign values to host variables
   auto t_start = std::chrono::high_resolution_clock::now();
   for (int i = 0; i < N; i++) {
@@ -90,6 +97,42 @@ void arrayInit(const int N,const int M,unsigned char (&a)[],std::ofstream& out){
   out << "\n";
 
 }
+
+void arrayLoad(const int N,const int M,unsigned char (&a)[],std::ofstream& out,std::ofstream archive_in){
+  using std::chrono::microseconds;
+  
+  //Set seed and make sure random works into the unsigned char limits
+  //int myseed = 1234;
+  //std::default_random_engine rng(myseed);
+  //std::uniform_int_distribution<int> rng_dist(0, 255);
+  // Assign values to host variables
+  auto t_start = std::chrono::high_resolution_clock::now();
+  for (int i = 0; i < N; i++) {
+    for (int j = 0; j < M; j++) {
+      a[i*M + j] = rand() % 2;
+    }
+  }
+  auto t_end = std::chrono::high_resolution_clock::now();
+  t.create_data =
+      std::chrono::duration_cast<microseconds>(t_end - t_start).count();
+  out << "\n";
+  for (int i = 0; i < N; i++){
+    for (int j = 0; j < M; j++){
+      int printerAux = a[i*M + j];
+      out << printerAux;
+      if (j != M-1){
+        out << ",";
+      }
+      else{
+        out << "\n";
+      }
+    }
+  }
+  out << "\n";
+
+}
+
+
 
 //Simula 1 epoca del juego en GPU
 //N,M Tamaño de la grilla
@@ -181,6 +224,96 @@ bool simulate(const int N,const int M, int globalSize, int localSize, std::ofstr
   return true;
 }
 
+//simula con memoria compartida
+bool simulate_shared(const int N,const int M, int globalSize, int localSize, std::ofstream& out,unsigned char (&a)[]) {
+  using std::chrono::microseconds;
+  const std::size_t size = sizeof(unsigned char) * N * M;
+  
+
+  // Create the memory buffers
+  cl::Buffer inBuff(queue.getInfo<CL_QUEUE_CONTEXT>(), CL_MEM_READ_WRITE, size);
+  cl::Buffer outBuff(queue.getInfo<CL_QUEUE_CONTEXT>(), CL_MEM_READ_WRITE, size);
+  //Set seed and make sure random works into the unsigned char limits
+  //int myseed = 1234;
+  //std::default_random_engine rng(myseed);
+  //std::uniform_int_distribution<int> rng_dist(0, 255);
+
+ 
+
+  // Copy values from host variables to device
+  auto t_start = std::chrono::high_resolution_clock::now();
+  // usar CL_FALSE para hacerlo asíncrono
+  queue.enqueueWriteBuffer(inBuff, CL_TRUE, 0, size, a);
+
+  auto t_end = std::chrono::high_resolution_clock::now();
+  t.copy_to_device =
+      std::chrono::duration_cast<microseconds>(t_end - t_start).count();
+
+ 
+  // Make kernel
+  cl::Kernel kernel(prog, "sim_life_shared");
+
+  // Set the kernel arguments
+  kernel.setArg(0, inBuff);
+  kernel.setArg(1, outBuff);
+  kernel.setArg(2, N);
+  kernel.setArg(3, M);
+  cl::size_type shared_mem_size = (localSize*localSize+(4*localSize)+4) * sizeof(unsigned char);
+  kernel.setArg(4, shared_mem_size, NULL);
+  
+  // Execute the function on the device 
+  cl::NDRange globalSize2D(N,M);
+  cl::NDRange localsize2D(localSize,localSize);
+
+  t_start = std::chrono::high_resolution_clock::now();
+  cl::Event event;
+  queue.enqueueNDRangeKernel(kernel, cl::NullRange, globalSize2D, localsize2D,nullptr,&event);
+  //queue.finish();
+  event.wait();
+  t_end = std::chrono::high_resolution_clock::now();
+  t.execution =
+      std::chrono::duration_cast<std::chrono::microseconds>(t_end - t_start)
+          .count();
+
+  // Copy the output variable from device to host
+  t_start = std::chrono::high_resolution_clock::now();
+  queue.enqueueReadBuffer(outBuff, CL_TRUE, 0, size, a);
+  t_end = std::chrono::high_resolution_clock::now();
+  t.copy_to_host =
+      std::chrono::duration_cast<std::chrono::microseconds>(t_end - t_start)
+          .count();
+
+  // Print the result
+
+  for (int i = 0; i < N; i++){
+    for (int j = 0; j < M; j++){
+      int printerAux = a[i*M + j];
+      out  << printerAux;
+      if (j != M-1){
+        out << ",";
+      }
+      else{
+        out << "\n";
+      }
+    }
+  }
+  out << "\n";
+  
+
+  std::cout << "Time to create data: " << t.create_data << " microseconds\n";
+  std::cout << "Time to copy data to device: " << t.copy_to_device
+            << " microseconds\n";
+  std::cout << "Time to execute kernel: " << t.execution << " microseconds\n";
+  std::cout << "Time to copy data to host: " << t.copy_to_host
+            << " microseconds\n";
+  std::cout << "Time to execute the whole program: " << t.total()
+            << " microseconds\n";
+
+  
+  return true;
+}
+
+
 int main(int argc, char* argv[]) {
   if (!init()){
     std::cerr << "Error inicializando OpenCL";
@@ -199,6 +332,7 @@ int main(int argc, char* argv[]) {
   int gs = std::stoi(argv[3]);
   int ls = std::stoi(argv[4]);
   int T = std::stoi(argv[5]);
+  
 
   //Abre el archivo
   std::ofstream out;
@@ -213,17 +347,33 @@ int main(int argc, char* argv[]) {
 
 
   //Simulation 
-
   unsigned char a[n*m];
-
+  //a load
+  if (argv[7] != NULL){
+    //std::ofstream archive_in;
+    //archive_in.open(argv[7]);
+    //arrayLoad(n,m,a,out,archive_in);
+  }
+  
   arrayInit(n,m,a,out);
+  
+
 
   for (int i = 0; i < T;i++){
     //Simula 1 epoca
-    if (!simulate(n, m, gs, ls, out, a)) {
-    std::cerr << "CL: Error while executing the simulation" << std::endl;
-    return 3;
+    if (shared_memory == true){
+        if (!simulate_shared(n, m, gs, ls, out, a)) {
+          std::cerr << "CL: Error while executing the simulation" << std::endl;
+          return 3;
+        }
     }
+    else{
+        if (!simulate(n, m, gs, ls, out, a)) {
+          std::cerr << "CL: Error while executing the simulation" << std::endl;
+          return 3;
+        }
+    }
+
 
 
   }

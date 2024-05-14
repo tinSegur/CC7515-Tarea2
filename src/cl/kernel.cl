@@ -10,7 +10,7 @@ kernel void sim_life(global unsigned char *in,global unsigned char *out, int N, 
     int x2 = (gindx + 1)%N;
     int y0 = (gindy - 1)%M;
     int y2 = (gindy + 1)%M;
-    //Temporalmente mapeo a 1D ya que en OpenCL solo existen o buffers o imagenes
+   
     int liveNeighbors = in[x0*M + y0] + in[x0*M+gindy] + in[x0*M+y2] +
                     in[gindx*M + y0] + in[gindx*M+y2] +
                     in[x2*M+y0] + in[x2*M+gindy]+ in[x2*M+y2];

@@ -4,6 +4,10 @@ set(CL_VERSION ${OpenCL_VERSION_MAJOR}${OpenCL_VERSION_MINOR}0)
 
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/kernel.cl
         ${CMAKE_CURRENT_BINARY_DIR} COPYONLY)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/kernel_shared.cl
+        ${CMAKE_CURRENT_BINARY_DIR} COPYONLY)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/kernel_test.cl
+        ${CMAKE_CURRENT_BINARY_DIR} COPYONLY)
 add_executable(${PROJECT_NAME}CL ${CL_SOURCES} ${UTILS})
 target_link_libraries(${PROJECT_NAME}CL PRIVATE ${OpenCL_LIBRARY})
 target_include_directories(${PROJECT_NAME}CL PRIVATE ${CMAKE_SOURCE_DIR}/include ${OpenCL_INCLUDE_DIRS}) 
