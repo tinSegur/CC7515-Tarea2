@@ -4,7 +4,7 @@
 #include <future>
 
 void sim_lifeCPU(size_t n, size_t m, char *grid, char *buf) {
-    char liveNeighbors;
+    uchar liveNeighbors;
 
     size_t i0;
     size_t i2;

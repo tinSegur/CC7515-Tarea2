@@ -5,8 +5,8 @@ __global__ void sim_life_shared(int n, int m, char *a, char *b){
     extern __shared__ char buf[];
 
     // get thread 2d id
-    uint i = (blockIdx.x * blockDim.x) + threadIdx.x;
-    uint j = (blockIdx.y * blockDim.y) + threadIdx.y;
+    int i = (blockIdx.x * blockDim.x) + threadIdx.x;
+    int j = (blockIdx.y * blockDim.y) + threadIdx.y;
 
     // copy the corresponding value into shared memory
     // shared memory will be of size (blockDim.x + 2, blockDim.y + 2)

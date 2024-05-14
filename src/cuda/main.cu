@@ -28,6 +28,7 @@ void initGrid(int n, int m, char *a){
       a[i*m + j] = rand() % 2;
     }
   }
+
 }
 
 bool simulate(int N, int M, int blockSize, int gridSize, int T = 50, std::string outfile = "cudaGameOfLife.txt", bool shared = false) {
@@ -39,7 +40,7 @@ bool simulate(int N, int M, int blockSize, int gridSize, int T = 50, std::string
 
   using std::chrono::microseconds;
   std::size_t size = sizeof(char) * N * M;
-  char a[N*M];
+  char *a = static_cast<char*>(malloc(size));
 
   // Create the memory buffers
   char *aDev;
@@ -53,6 +54,21 @@ bool simulate(int N, int M, int blockSize, int gridSize, int T = 50, std::string
   auto t_end = std::chrono::high_resolution_clock::now();
   t.create_data =
       std::chrono::duration_cast<microseconds>(t_end - t_start).count();
+
+  //Print result
+  for (int i = 0; i < N; i++){
+    for (int j = 0; j < M; j++){
+      int printerAux = a[i*M + j];
+      std::cout  << printerAux;
+      if (j != M-1){
+        std::cout << ",";
+      }
+      else{
+        std::cout << "\n";
+      }
+    }
+  }
+  std::cout << "\n";
 
   // Copy values from host variables to device
   t_start = std::chrono::high_resolution_clock::now();
@@ -91,7 +107,7 @@ bool simulate(int N, int M, int blockSize, int gridSize, int T = 50, std::string
       std::chrono::duration_cast<std::chrono::microseconds>(t_end - t_start)
           .count();
 
-    cudaMemcpy(aDev, bDev, size, cudaMemcpyDeviceToDevice);
+    cudaMemcpy(aDev, bDev, size, cudaMemcpyDeviceToDevice); // bring aux buffer values back to main array
     // Copy the output variable from device to host
     t_start = std::chrono::high_resolution_clock::now();
     cudaMemcpy(a, aDev, size, cudaMemcpyDeviceToHost);
@@ -117,10 +133,11 @@ bool simulate(int N, int M, int blockSize, int gridSize, int T = 50, std::string
     }
     out << "\n";
 
-    cudaFree(aDev);
-    cudaFree(bDev);
-
   }
+
+  cudaFree(aDev);
+  cudaFree(bDev);
+  delete a;
 
 
   std::cout << "Time to create data: " << t.create_data << " microseconds\n";
