@@ -22,7 +22,7 @@ struct Times {
     return create_data + copy_to_host + execution + copy_to_device;
   }
 };
-bool shared_memory = false;
+bool shared_memory = true;
 Times t;
 cl::Program prog;
 cl::CommandQueue queue;
@@ -319,15 +319,10 @@ bool simulate_shared(const int N,const int M, int globalSize, int localSize, std
 
 
 int main(int argc, char* argv[]) {
-  if (!init()){
-    std::cerr << "Error inicializando OpenCL";
-    return 1;
-  }
   
-
-  if (argc != 7 && argc != 8) {
+  if (argc != 8 && argc != 9) {
     std::cerr << "Uso: " << argv[0]
-              << " <array size N> <array size M> <global size> <local size> <t-iterations> <output filename> <input filename>"
+              << " <array size N> <array size M> <global size> <local size> <t-iterations> <shared memory> <output filename> <input filename>"
               << std::endl;
     return 2;
   }
@@ -336,13 +331,22 @@ int main(int argc, char* argv[]) {
   int gs = std::stoi(argv[3]);
   int ls = std::stoi(argv[4]);
   int T = std::stoi(argv[5]);
+  shared_memory = bool(std::stoi(argv[6]));
+
+
+  if (!init()){
+    std::cerr << "Error inicializando OpenCL";
+    return 1;
+  }
+  
+
   
 
   //Abre el archivo
   std::ofstream out;
-  out.open(argv[6], std::ios::app | std::ios::out);
+  out.open(argv[7], std::ios::app | std::ios::out);
   if (!out.is_open()) {
-    std::cerr << "Error while opening file: '" << argv[6] << "'" << std::endl;
+    std::cerr << "Error while opening file: '" << argv[7] << "'" << std::endl;
     return 4;
   }
 
@@ -353,9 +357,9 @@ int main(int argc, char* argv[]) {
   //Simulation 
   unsigned char a[n*m];
   //a load
-  if (argv[7] != NULL){
+  if (argv[8] != NULL){
     
-    arrayLoad(n,m,a,out,argv[7]);
+    arrayLoad(n,m,a,out,argv[8]);
   }
   else{
     arrayInit(n,m,a,out);
@@ -390,6 +394,6 @@ int main(int argc, char* argv[]) {
   out << t.create_data << "," << t.copy_to_device << "," << t.execution << ","
       << t.copy_to_host << "," << t.total() << "\n";
 
-  std::cout << "Data written to " << argv[6] << std::endl;
+  std::cout << "Data written to " << argv[7] << std::endl;
   return 0;
 }
