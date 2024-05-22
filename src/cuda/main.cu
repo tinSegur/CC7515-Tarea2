@@ -182,6 +182,6 @@ int main(int argc, char* argv[]) {
   // times
   out << t.create_data << "," << t.copy_to_device << "," << t.execution << "," << t.copy_to_host << "," << t.total() << "\n";
 
-  std::cout << "Data written to " << argv[7] << std::endl;
+  std::cout << "Data written to " << argv[6] << std::endl;
   return 0;
 }
