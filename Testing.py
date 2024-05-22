@@ -62,7 +62,7 @@ def testCUDA(n,m,g,l,t):
         tiempo_final = last_line.strip(",")[4]
         return tiempo_final
 
-valores = [50,100,500,1000,1500,5000]
+valores = [50,100,500,1000]
 clRes = []
 cpuRes = []
 for val in valores:
