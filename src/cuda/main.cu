@@ -31,7 +31,7 @@ void initGrid(int n, int m, char *a){
 
 }
 
-bool simulate(int N, int M, int blockSize, int gridSize, int T = 50, std::string outfile = "cudaGameOfLife.txt", bool shared = false) {
+bool simulate(int N, int M, int blockSize, int T = 50, std::string outfile = "cudaGameOfLife.txt", bool shared = false) {
 
 
   std::cout << "Starting simulation:\n";
@@ -153,20 +153,19 @@ bool simulate(int N, int M, int blockSize, int gridSize, int T = 50, std::string
 }
 
 int main(int argc, char* argv[]) {
-  if (argc != 8) {
-    std::cerr << "Uso: " << argv[0] << " <n> <m> <sim steps> <block size> <grid size> <use_shared> <output file>"
+  if (argc != 7) {
+    std::cerr << "Uso: " << argv[0] << " <n> <m> <sim steps> <block size> <use_shared> <output file>"
               << std::endl;
     return 2;
   }
   int n = std::stoi(argv[1]);
   int m = std::stoi(argv[2]);
   int steps = std::stoi(argv[3]);
-  int gs = std::stoi(argv[4]);
-  int bs = std::stoi(argv[5]);
-  bool shared = bool(std::stoi(argv[6]));
-  std::string outf = argv[7];
+  int bs = std::stoi(argv[4]);
+  bool shared = bool(std::stoi(argv[5]));
+  std::string outf = argv[6];
 
-  if (!simulate(n, m, bs, gs, steps, outf, shared)) {
+  if (!simulate(n, m, bs, steps, outf, shared)) {
     std::cerr << "CUDA: Error while executing the simulation" << std::endl;
     return 3;
     return 3;
@@ -179,7 +178,7 @@ int main(int argc, char* argv[]) {
     return 4;
   }
   // params
-  out << n << "," << bs << "," << gs << ",";
+  out << n << "," << bs;
   // times
   out << t.create_data << "," << t.copy_to_device << "," << t.execution << "," << t.copy_to_host << "," << t.total() << "\n";
 

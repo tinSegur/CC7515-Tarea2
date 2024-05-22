@@ -1,4 +1,5 @@
 #include "kernel_shared.cuh"
+#include <stdio.h>
 
 __global__ void sim_life_shared(int n, int m, char *a, char *b){
 
@@ -16,10 +17,12 @@ __global__ void sim_life_shared(int n, int m, char *a, char *b){
     // for example: thread (0,0) will require the value stored at (n,m)
     // given this, it will write the value at (0,0) into buffer memory (1,1) and write the value (n,m) into
     // buffer memory (0,0)
-    // given edge values that are not in the corner will still be accessed 3 times,
+    // given edge values will still be accessed 3 times,
     // it's still better to copy the values into shared memory
 
-    buf[(blockIdx.x+1)*blockDim.y + blockIdx.y + 1] = a[i*m + j];
+    buf[(blockIdx.x+1)*(blockDim.y + 2) + blockIdx.y + 1] = a[i*m + j];
+    printf(&buf[(blockIdx.x+1)*(blockDim.y + 2) + blockIdx.y + 1]);
+    printf(&a[i*m + j]);
 
     int i0 = (i + n - 1)%n;
     int i2 = (i + 1)%n;
