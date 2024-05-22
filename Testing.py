@@ -25,13 +25,13 @@ def testCPU(n,m,t):
             tiempo_final = last_line.split(",")[3].strip("\n")
             return tiempo_final
 
-def testCL(n,m,g,l,t):
+def testCL(n,m,g,l,t,shared):
     output = "output2.txt"
     current_dir = os.path.dirname(os.path.abspath(__file__))
     current_dir = os.path.join(current_dir,"build\src\cl")
     os.chdir(current_dir)
     exe_path = os.path.join(current_dir, "Tarea2CL.exe")
-    args = [str(n), str(m), str(g), str(l), str(t), output]
+    args = [str(n), str(m), str(g), str(l), str(t),str(shared), output]
     result = subprocess.run([exe_path] + args, capture_output=True, text=True)
     print("Salida estándar:", result.stdout)
     print("Error estándar:", result.stderr)
@@ -66,12 +66,12 @@ valores = [50,100,500,1000]
 clRes = []
 cpuRes = []
 for val in valores:
-
-    res = testCL(val,val,val,2,3)
-    clRes.append(res)
+    #aviso de que opencl explota cuando el blocksize no es divisor del numero total, estoy buscando solucion
+    res = testCL(val,val,val,2,3,0)
+    clRes.append(float(res))
 
     res = testCPU(val,val,3)
-    cpuRes.append(res)
+    cpuRes.append(float(res))
 
 print(clRes)
 print(cpuRes)
