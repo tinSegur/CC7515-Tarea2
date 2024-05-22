@@ -56,7 +56,6 @@ kernel void sim_life_shared(global unsigned char *in,global unsigned char *out, 
         shared_mem[(shindx)*sharedSizeY + (shindy+1)] = in[gindx*M + y2];
     }
     barrier(CLK_LOCAL_MEM_FENCE);
-    //Temporalmente mapeo a 1D ya que en OpenCL solo existen o buffers o imagenes
     int liveNeighbors = shared_mem[(shindx-1)*sharedSizeY + (shindy-1)] 
                       + shared_mem[(shindx-1)*sharedSizeY + (shindy)] 
                       + shared_mem[(shindx-1)*sharedSizeY + (shindy+1)] 

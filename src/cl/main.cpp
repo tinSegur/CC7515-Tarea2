@@ -14,15 +14,15 @@
 
 //Estructura para contar los tiempos de procesamiento
 struct Times {
-  long create_data;
-  long copy_to_host;
-  long execution;
-  long copy_to_device;
+  long create_data = 0;
+  long copy_to_host = 0;
+  long execution = 0;
+  long copy_to_device = 0;
   inline long total() {
     return create_data + copy_to_host + execution + copy_to_device;
   }
 };
-bool shared_memory = true;
+bool shared_memory = false;
 Times t;
 cl::Program prog;
 cl::CommandQueue queue;
@@ -70,7 +70,7 @@ void arrayInit(const int N,const int M,unsigned char (&a)[],std::ofstream& out){
   //int myseed = 1234;
   //std::default_random_engine rng(myseed);
   //std::uniform_int_distribution<int> rng_dist(0, 255);
-  //srand(1234);
+  srand(1234);
   // Assign values to host variables
   auto t_start = std::chrono::high_resolution_clock::now();
   for (int i = 0; i < N; i++) {
@@ -98,41 +98,45 @@ void arrayInit(const int N,const int M,unsigned char (&a)[],std::ofstream& out){
 
 }
 
-void arrayLoad(const int N,const int M,unsigned char (&a)[],std::ofstream& out,std::ofstream archive_in){
+
+ void arrayLoad(const int N,const int M,unsigned char (&a)[],std::ofstream& out,std::string archive_in){ 
   using std::chrono::microseconds;
-  
-  //Set seed and make sure random works into the unsigned char limits
-  //int myseed = 1234;
-  //std::default_random_engine rng(myseed);
-  //std::uniform_int_distribution<int> rng_dist(0, 255);
-  // Assign values to host variables
   auto t_start = std::chrono::high_resolution_clock::now();
-  for (int i = 0; i < N; i++) {
-    for (int j = 0; j < M; j++) {
-      a[i*M + j] = rand() % 2;
+
+
+  std::ifstream archivo (archive_in);
+  if (!archivo.is_open()){
+      throw std::logic_error("Main.cl: Error abriendo archivo.");
+  }
+
+  std::string valor;
+  std::vector<double> numeros;
+  int i = 0;
+  while (std::getline(archivo, valor,',')) {
+    if(valor != "\n"){
+      a[i] = static_cast<unsigned char>(std::stoi(valor));
+      i++;
     }
   }
+  archivo.close();
   auto t_end = std::chrono::high_resolution_clock::now();
   t.create_data =
       std::chrono::duration_cast<microseconds>(t_end - t_start).count();
   out << "\n";
   for (int i = 0; i < N; i++){
-    for (int j = 0; j < M; j++){
-      int printerAux = a[i*M + j];
-      out << printerAux;
-      if (j != M-1){
-        out << ",";
-      }
-      else{
-        out << "\n";
+      for (int j = 0; j < M; j++){
+        int printerAux = a[i*M + j];
+        out << printerAux;
+        if (j != M-1){
+          out << ",";
+        }
+        else{
+          out << "\n";
+        }
       }
     }
+    out << "\n";
   }
-  out << "\n";
-
-}
-
-
 
 //Simula 1 epoca del juego en GPU
 //N,M Tamaño de la grilla
@@ -161,7 +165,7 @@ bool simulate(const int N,const int M, int globalSize, int localSize, std::ofstr
 
   auto t_end = std::chrono::high_resolution_clock::now();
   t.copy_to_device =
-      std::chrono::duration_cast<microseconds>(t_end - t_start).count();
+      std::chrono::duration_cast<microseconds>(t_end - t_start).count() + t.copy_to_device;
 
   // Make kernel
   cl::Kernel kernel(prog, "sim_life");
@@ -184,7 +188,7 @@ bool simulate(const int N,const int M, int globalSize, int localSize, std::ofstr
   t_end = std::chrono::high_resolution_clock::now();
   t.execution =
       std::chrono::duration_cast<std::chrono::microseconds>(t_end - t_start)
-          .count();
+          .count() + t.execution;
 
   // Copy the output variable from device to host
   t_start = std::chrono::high_resolution_clock::now();
@@ -192,7 +196,7 @@ bool simulate(const int N,const int M, int globalSize, int localSize, std::ofstr
   t_end = std::chrono::high_resolution_clock::now();
   t.copy_to_host =
       std::chrono::duration_cast<std::chrono::microseconds>(t_end - t_start)
-          .count();
+          .count() + t.copy_to_host;
 
   // Print the result
 
@@ -247,7 +251,7 @@ bool simulate_shared(const int N,const int M, int globalSize, int localSize, std
 
   auto t_end = std::chrono::high_resolution_clock::now();
   t.copy_to_device =
-      std::chrono::duration_cast<microseconds>(t_end - t_start).count();
+      std::chrono::duration_cast<microseconds>(t_end - t_start).count() + t.copy_to_device;
 
  
   // Make kernel
@@ -273,7 +277,7 @@ bool simulate_shared(const int N,const int M, int globalSize, int localSize, std
   t_end = std::chrono::high_resolution_clock::now();
   t.execution =
       std::chrono::duration_cast<std::chrono::microseconds>(t_end - t_start)
-          .count();
+          .count() + t.execution;
 
   // Copy the output variable from device to host
   t_start = std::chrono::high_resolution_clock::now();
@@ -281,7 +285,7 @@ bool simulate_shared(const int N,const int M, int globalSize, int localSize, std
   t_end = std::chrono::high_resolution_clock::now();
   t.copy_to_host =
       std::chrono::duration_cast<std::chrono::microseconds>(t_end - t_start)
-          .count();
+          .count() + t.copy_to_host;
 
   // Print the result
 
@@ -321,9 +325,9 @@ int main(int argc, char* argv[]) {
   }
   
 
-  if (argc != 7) {
+  if (argc != 7 && argc != 8) {
     std::cerr << "Uso: " << argv[0]
-              << " <array size N> <array size M> <global size> <local size> <t-iterations> <output filename>"
+              << " <array size N> <array size M> <global size> <local size> <t-iterations> <output filename> <input filename>"
               << std::endl;
     return 2;
   }
@@ -350,12 +354,14 @@ int main(int argc, char* argv[]) {
   unsigned char a[n*m];
   //a load
   if (argv[7] != NULL){
-    //std::ofstream archive_in;
-    //archive_in.open(argv[7]);
-    //arrayLoad(n,m,a,out,archive_in);
+    
+    arrayLoad(n,m,a,out,argv[7]);
+  }
+  else{
+    arrayInit(n,m,a,out);
   }
   
-  arrayInit(n,m,a,out);
+  
   
 
 
