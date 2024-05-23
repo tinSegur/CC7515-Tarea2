@@ -74,10 +74,13 @@ bool simulate(int N, int M, int T = 50, std::string outfile = "gameOfLifeCPU.txt
   out << "\n";
 
 
-  std::cout << "Time to create data: " << t.create_data << " microseconds\n";
-  std::cout << "Time to execute kernel: " << t.execution << " microseconds\n";
-  std::cout << "Time to execute the whole program: " << t.total()
-            << " microseconds\n";
+  std::cout << "dt:" << t.create_data << "\n";
+  std::cout << "et:" << t.execution << "\n";
+  std::cout << "tt:" << t.total();
+
+  out << "dt:" << t.create_data << "\n";
+  out << "et:" << t.execution << "\n";
+  out << "tt:" << t.total();
 
   return true;
 }
@@ -98,7 +101,7 @@ int main(int argc, char* argv[]) {
     return 3;
   }
 
-  std::ofstream out;
+  /*std::ofstream out;
   out.open(argv[2], std::ios::app | std::ios::out);
   if (!out.is_open()) {
     std::cerr << "Error while opening file: '" << argv[2] << "'" << std::endl;
@@ -107,6 +110,6 @@ int main(int argc, char* argv[]) {
   out << n << "," << t.create_data << "," << t.execution << "," << t.total()
       << "\n";
 
-  std::cout << "Data written to " << argv[4] << std::endl;
+  std::cout << "Data written to " << argv[4] << std::endl;*/
   return 0;
 }
