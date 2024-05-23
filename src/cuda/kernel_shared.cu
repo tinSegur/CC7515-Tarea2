@@ -35,17 +35,6 @@ __global__ void sim_life_shared(int n, int m, char *a, char *b){
     // it's still better to copy the values into shared memory
 
     buf[si*sm + sj] = a[i*m + j];
-    short bv = buf[si*sm + sj];
-
-    if (j == 0 && i == 0) {
-        printf("\n");
-    }
-
-    printf("%d", bv);
-
-    short av = a[i*m + j];
-    printf("%d", av);
-
 
     int i0 = (i + n - 1)%n;
     int i2 = (i + 1)%n;

@@ -14,8 +14,9 @@ struct Times {
   long copy_to_host;
   long execution;
   long copy_to_device;
+  long copy_device_to_device;
   inline long total() {
-    return create_data + copy_to_host + execution + copy_to_device; 
+    return create_data + copy_to_host + execution + copy_to_device + copy_device_to_device;
   }
 };
 
@@ -55,21 +56,6 @@ bool simulate(int N, int M, int blockSize, int T = 50, std::string outfile = "cu
   t.create_data =
       std::chrono::duration_cast<microseconds>(t_end - t_start).count();
 
-  //Print result
-  for (int i = 0; i < N; i++){
-    for (int j = 0; j < M; j++){
-      int printerAux = a[i*M + j];
-      std::cout  << printerAux;
-      if (j != M-1){
-        std::cout << ",";
-      }
-      else{
-        std::cout << "\n";
-      }
-    }
-  }
-  std::cout << "\n";
-
   // Copy values from host variables to device
   t_start = std::chrono::high_resolution_clock::now();
   cudaMemcpy(aDev, a, size, cudaMemcpyHostToDevice);
@@ -107,7 +93,13 @@ bool simulate(int N, int M, int blockSize, int T = 50, std::string outfile = "cu
       std::chrono::duration_cast<std::chrono::microseconds>(t_end - t_start)
           .count();
 
+    t_start = std::chrono::high_resolution_clock::now();
     cudaMemcpy(aDev, bDev, size, cudaMemcpyDeviceToDevice); // bring aux buffer values back to main array
+    t_end = std::chrono::high_resolution_clock::now();
+    t.copy_device_to_device +=
+      std::chrono::duration_cast<std::chrono::microseconds>(t_end - t_start)
+            .count();
+
     // Copy the output variable from device to host
     t_start = std::chrono::high_resolution_clock::now();
     cudaMemcpy(a, aDev, size, cudaMemcpyDeviceToHost);
@@ -116,7 +108,7 @@ bool simulate(int N, int M, int blockSize, int T = 50, std::string outfile = "cu
         std::chrono::duration_cast<std::chrono::microseconds>(t_end - t_start)
             .count();
 
-    //out.write(a, size);
+    out.write(a, size);
 
     //Print result
     for (int i = 0; i < N; i++){
@@ -140,14 +132,12 @@ bool simulate(int N, int M, int blockSize, int T = 50, std::string outfile = "cu
   delete a;
 
 
-  std::cout << "Time to create data: " << t.create_data << " microseconds\n";
-  std::cout << "Time to copy data to device: " << t.copy_to_device
-            << " microseconds\n";
-  std::cout << "Time to execute kernel: " << t.execution << " microseconds\n";
-  std::cout << "Time to copy data to host: " << t.copy_to_host
-            << " microseconds\n";
-  std::cout << "Time to execute the whole program: " << t.total()
-            << " microseconds\n";
+  std::cout << "cd:" << t.create_data << "\n";
+  std::cout << "htd:" << t.copy_to_device << "\n";
+  std::cout << "ke:" << t.execution << "\n";
+  std::cout << "dth:" << t.copy_to_host << "\n";
+  std::cout << "dtd:" << t.copy_device_to_device << "\n";
+  std::cout << "tt:" << t.total();
   return true;
 
 }
@@ -177,11 +167,11 @@ int main(int argc, char* argv[]) {
     std::cerr << "Error while opening file: '" << argv[2] << "'" << std::endl;
     return 4;
   }
-  // params
+  /*// params
   out << n << "," << bs;
   // times
   out << t.create_data << "," << t.copy_to_device << "," << t.execution << "," << t.copy_to_host << "," << t.total() << "\n";
 
-  std::cout << "Data written to " << argv[6] << std::endl;
+  std::cout << "Data written to " << argv[6] << std::endl;*/
   return 0;
 }
