@@ -177,7 +177,9 @@ bool simulate(const int N,const int M, int globalSize, int localSize, std::ofstr
   kernel.setArg(3, M);
 
   // Execute the function on the device 
-  cl::NDRange globalSize2D(N,M);
+  size_t globalSizeN = ceil(N/localSize)*localSize;
+  size_t globalSizeM = ceil(M/localSize)*localSize;
+  cl::NDRange globalSize2D(globalSizeN,globalSizeM);
   cl::NDRange localsize2D(localSize,localSize);
 
   t_start = std::chrono::high_resolution_clock::now();
@@ -266,7 +268,9 @@ bool simulate_shared(const int N,const int M, int globalSize, int localSize, std
   kernel.setArg(4, shared_mem_size, NULL);
   
   // Execute the function on the device 
-  cl::NDRange globalSize2D(N,M);
+  size_t globalSizeN = ceil(N/localSize)*localSize;
+  size_t globalSizeM = ceil(M/localSize)*localSize;
+  cl::NDRange globalSize2D(globalSizeN,globalSizeM);
   cl::NDRange localsize2D(localSize,localSize);
 
   t_start = std::chrono::high_resolution_clock::now();
@@ -319,7 +323,7 @@ bool simulate_shared(const int N,const int M, int globalSize, int localSize, std
 
 
 int main(int argc, char* argv[]) {
-  
+
   if (argc != 8 && argc != 9) {
     std::cerr << "Uso: " << argv[0]
               << " <array size N> <array size M> <global size> <local size> <t-iterations> <shared memory> <output filename> <input filename>"
