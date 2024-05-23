@@ -25,3 +25,6 @@ build/
 
 # CMake
 cmake-build-*/
+
+# Python Venv
+venv/
