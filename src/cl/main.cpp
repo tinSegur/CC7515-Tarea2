@@ -22,7 +22,7 @@ struct Times {
     return create_data + copy_to_host + execution + copy_to_device;
   }
 };
-bool shared_memory = true;
+bool shared_memory = false;
 Times t;
 cl::Program prog;
 cl::CommandQueue queue;
@@ -143,7 +143,7 @@ void arrayInit(const int N,const int M,unsigned char (&a)[],std::ofstream& out){
 //globalsize tamaño del problema
 //localsize tamaño de los work-groups
 //out archivo abierto para enviar los resultados
-bool simulate(const int N,const int M, int globalSize, int localSize, std::ofstream& out,unsigned char (&a)[]) {
+bool simulate(const int N,const int M, int localSize, std::ofstream& out,unsigned char (&a)[]) {
   using std::chrono::microseconds;
   const std::size_t size = sizeof(unsigned char) * N * M;
   
@@ -231,7 +231,7 @@ bool simulate(const int N,const int M, int globalSize, int localSize, std::ofstr
 }
 
 //simula con memoria compartida
-bool simulate_shared(const int N,const int M, int globalSize, int localSize, std::ofstream& out,unsigned char (&a)[]) {
+bool simulate_shared(const int N,const int M, int localSize, std::ofstream& out,unsigned char (&a)[]) {
   using std::chrono::microseconds;
   const std::size_t size = sizeof(unsigned char) * N * M;
   
@@ -264,7 +264,7 @@ bool simulate_shared(const int N,const int M, int globalSize, int localSize, std
   kernel.setArg(1, outBuff);
   kernel.setArg(2, N);
   kernel.setArg(3, M);
-  cl::size_type shared_mem_size = (localSize*localSize+(4*localSize)+4) * sizeof(unsigned char);
+  cl::size_type shared_mem_size = ((localSize+2)*(localSize+2)) * sizeof(unsigned char);
   kernel.setArg(4, shared_mem_size, NULL);
   
   // Execute the function on the device 
@@ -285,7 +285,7 @@ bool simulate_shared(const int N,const int M, int globalSize, int localSize, std
 
   // Copy the output variable from device to host
   t_start = std::chrono::high_resolution_clock::now();
-  queue.enqueueReadBuffer(outBuff, CL_TRUE, 0, size, a);
+  //queue.enqueueReadBuffer(outBuff, CL_TRUE, 0, size, a);
   t_end = std::chrono::high_resolution_clock::now();
   t.copy_to_host =
       std::chrono::duration_cast<std::chrono::microseconds>(t_end - t_start)
@@ -324,19 +324,18 @@ bool simulate_shared(const int N,const int M, int globalSize, int localSize, std
 
 int main(int argc, char* argv[]) {
 
-  if (argc != 8 && argc != 9) {
+  if (argc != 7 && argc != 8) {
     std::cerr << "Uso: " << argv[0]
-              << " <array size N> <array size M> <global size> <local size> <t-iterations> <shared memory> <output filename> <input filename>"
+              << " <array size N> <array size M> <local size> <t-iterations> <shared memory> <output filename> <input filename>"
               << std::endl;
     return 2;
   }
-  int n = std::stoi(argv[1]);
-  int m = std::stoi(argv[2]);
-  int gs = std::stoi(argv[3]);
-  int ls = std::stoi(argv[4]);
-  int T = std::stoi(argv[5]);
-  shared_memory = bool(std::stoi(argv[6]));
-
+  const int n = std::stoi(argv[1]);
+  const int m = std::stoi(argv[2]);
+  int ls = std::stoi(argv[3]);
+  int T = std::stoi(argv[4]);
+  shared_memory = bool(std::stoi(argv[5]));
+  std::cout << shared_memory << "\n";
 
   if (!init()){
     std::cerr << "Error inicializando OpenCL";
@@ -348,22 +347,22 @@ int main(int argc, char* argv[]) {
 
   //Abre el archivo
   std::ofstream out;
-  out.open(argv[7], std::ios::app | std::ios::out);
+  out.open(argv[6], std::ios::app | std::ios::out);
   if (!out.is_open()) {
-    std::cerr << "Error while opening file: '" << argv[7] << "'" << std::endl;
+    std::cerr << "Error while opening file: '" << argv[6] << "'" << std::endl;
     return 4;
   }
 
   // params
-  out << n << "," << ls << "," << gs << ",";
+  out << n << "," << ls << ",";
 
 
   //Simulation 
   unsigned char a[n*m];
   //a load
-  if (argv[8] != NULL){
+  if (argv[7] != NULL){
     
-    arrayLoad(n,m,a,out,argv[8]);
+    arrayLoad(n,m,a,out,argv[7]);
   }
   else{
     arrayInit(n,m,a,out);
@@ -376,13 +375,13 @@ int main(int argc, char* argv[]) {
   for (int i = 0; i < T;i++){
     //Simula 1 epoca
     if (shared_memory == true){
-        if (!simulate_shared(n, m, gs, ls, out, a)) {
+        if (!simulate_shared(n, m, ls, out, a)) {
           std::cerr << "CL: Error while executing the simulation" << std::endl;
           return 3;
         }
     }
     else{
-        if (!simulate(n, m, gs, ls, out, a)) {
+        if (!simulate(n, m, ls, out, a)) {
           std::cerr << "CL: Error while executing the simulation" << std::endl;
           return 3;
         }
@@ -398,6 +397,6 @@ int main(int argc, char* argv[]) {
   out << t.create_data << "," << t.copy_to_device << "," << t.execution << ","
       << t.copy_to_host << "," << t.total() << "\n";
 
-  std::cout << "Data written to " << argv[7] << std::endl;
+  std::cout << "Data written to " << argv[6] << std::endl;
   return 0;
 }
